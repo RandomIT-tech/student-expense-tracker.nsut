@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Expense Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <!-- ===== Header: logo, navigation, month selector ===== -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#dashboard">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v3"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2z"/><circle cx="16.5" cy="14" r="1"/></svg>
+        <span>Student Expense Tracker</span>
+      </a>
+      <nav class="nav">
+        <a href="#dashboard" id="nav-dashboard" class="nav-link active">Dashboard</a>
+        <a href="#budget" id="nav-budget" class="nav-link">Monthly Budget</a>
+      </nav>
+      <label class="month-picker">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        <span class="sr-only">Select month</span>
+        <input type="month" id="month-select">
+      </label>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <!-- ===== VIEW 1: Dashboard ===== -->
+    <section id="view-dashboard">
+      <div class="cards">
+        <article class="card">
+          <p class="card-label">Total Expenses</p>
+          <p class="card-amount" id="card-total">₹0.00</p>
+          <p class="card-note" id="card-total-note">&nbsp;</p>
+        </article>
+        <article class="card">
+          <p class="card-label">Monthly Budget</p>
+          <p class="card-amount" id="card-budget">₹0.00</p>
+          <p class="card-note" id="card-budget-note">&nbsp;</p>
+        </article>
+        <article class="card" id="card-remaining-box">
+          <p class="card-label">Remaining Budget</p>
+          <p class="card-amount" id="card-remaining">₹0.00</p>
+          <p class="card-note" id="card-remaining-note">&nbsp;</p>
+        </article>
+      </div>
+
+      <div class="columns">
+        <!-- Left: Add / Edit expense form -->
+        <section class="panel form-panel">
+          <h2 id="form-heading">Add Expense</h2>
+          <form id="expense-form" novalidate>
+            <div class="field">
+              <label for="amount">Amount (₹)</label>
+              <div class="input-prefix"><span>₹</span><input id="amount" type="number" step="0.01" min="0" placeholder="0.00"></div>
+              <span class="field-error" data-for="amount"></span>
+            </div>
+            <div class="field">
+              <label for="category">Category</label>
+              <select id="category">
+                <option value="">Select category</option>
+                {% for name in categories %}<option value="{{ name }}">{{ name }}</option>{% endfor %}
+              </select>
+              <span class="field-error" data-for="category"></span>
+            </div>
+            <div class="field">
+              <label for="date">Date</label>
+              <input id="date" type="date">
+              <span class="field-error" data-for="date"></span>
+            </div>
+            <div class="field">
+              <label for="description">Description <small>(optional)</small></label>
+              <input id="description" type="text" maxlength="100" placeholder="e.g. Canteen lunch">
+              <span class="field-error" data-for="description"></span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Add Expense</button>
+            <button type="button" class="btn btn-secondary btn-block" id="cancel-edit-btn" hidden>Cancel Edit</button>
+          </form>
+        </section>
+
+        <!-- Right: Recent transactions -->
+        <section class="panel table-panel">
+          <div class="panel-head">
+            <h2>Recent Transactions</h2>
+            <div class="demo-actions">
+              <button class="link-btn" id="load-demo-btn" type="button">Load sample data</button>
+              <button class="link-btn" id="clear-demo-btn" type="button">Remove sample data</button>
+            </div>
+          </div>
+
+          <div class="filters">
+            <input type="search" id="search-input" placeholder="Search description…" aria-label="Search description">
+            <select id="filter-category" aria-label="Filter by category">
+              <option value="">All categories</option>
+              {% for name in categories %}<option value="{{ name }}">{{ name }}</option>{% endfor %}
+            </select>
+            <select id="sort-select" aria-label="Sort expenses">
+              <option value="date-desc">Newest first</option>
+              <option value="date-asc">Oldest first</option>
+              <option value="amount-desc">Highest amount</option>
+              <option value="amount-asc">Lowest amount</option>
+            </select>
+          </div>
+
+          <div class="table-wrap">
+            <table id="expense-table">
+              <thead>
+                <tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Amount (₹)</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="expense-body"></tbody>
+            </table>
+          </div>
+          <p class="empty-state" id="empty-state" hidden></p>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===== VIEW 2: Monthly Budget ===== -->
+    <section id="view-budget" hidden>
+      <section class="panel budget-panel">
+        <h2>Monthly Budget</h2>
+        <p class="muted">Set a spending limit for each month separately.</p>
+
+        <div class="field">
+          <label for="budget-month">Month</label>
+          <input type="month" id="budget-month">
+        </div>
+        <div class="field">
+          <label for="budget-amount">Monthly budget (₹)</label>
+          <div class="input-prefix"><span>₹</span><input id="budget-amount" type="number" step="0.01" min="0" placeholder="e.g. 5000"></div>
+          <span class="field-error" data-for="budget-amount"></span>
+        </div>
+        <button class="btn btn-primary" id="save-budget-btn" type="button">Save Budget</button>
+
+        <hr>
+        <div class="budget-stats">
+          <div><p class="card-label">Current spending</p><p class="stat" id="budget-spent">₹0.00</p></div>
+          <div><p class="card-label">Remaining budget</p><p class="stat" id="budget-remaining">₹0.00</p></div>
+        </div>
+        <div class="progress" aria-label="Budget used"><div class="progress-bar" id="progress-bar"></div></div>
+        <p class="muted" id="progress-text"></p>
+        <p class="alert" id="budget-alert" hidden></p>
+      </section>
+    </section>
+  </main>
+
+  <!-- Delete confirmation dialog -->
+  <dialog id="delete-dialog">
+    <h3>Delete this expense?</h3>
+    <p id="delete-text" class="muted"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" id="delete-cancel-btn" type="button">Cancel</button>
+      <button class="btn btn-danger" id="delete-confirm-btn" type="button">Delete</button>
+    </div>
+  </dialog>
+
+  <footer class="footer">
+    Semester 1 Mini Project &middot;
+    Team: [<b>Ayush Sahani</b> 2026UIT3072 <b>Shivay Gupta</b> 2026UIT3066 <b>Aarav Jain</b> 2026UIT3081 <b>Aditya Kumar Choudhary</b> 2026UIT3050] &middot; Branch: [IT-1] &middot;  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
